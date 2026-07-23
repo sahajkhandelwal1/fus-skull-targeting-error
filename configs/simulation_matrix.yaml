@@ -1,0 +1,19 @@
+# Defines the baseline + generalization-subset simulation design.
+# See FUS_Project_Full_Plan_and_Executive_Summary.md and the project plan for rationale.
+
+baseline:
+  # Run for every subject in the cohort.
+  target: null            # TODO: fix treatment target coordinates
+  frequency_hz: null      # TODO: fix ultrasound frequency
+  transducer: null        # TODO: fix transducer geometry/spec
+
+generalization:
+  # Run only on a subset of subjects, one axis varied at a time.
+  subset_size: 40
+  additional_targets: []          # TODO: list of alternate target coordinates
+  additional_frequencies_hz: []   # TODO: list of alternate frequencies
+  additional_transducers: []      # TODO: list of alternate transducer specs
+
+cohort:
+  n_subjects_target: 200   # 150-300 range per project plan
+  source_dataset: IXI
