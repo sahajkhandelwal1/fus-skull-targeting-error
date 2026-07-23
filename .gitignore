@@ -25,6 +25,9 @@ results/tables/*
 *.nii
 *.nii.gz
 
+# Full project plan (executive summary lives in README.md instead)
+FUS_Project_Full_Plan_and_Executive_Summary.md
+
 # OS
 .DS_Store
 
