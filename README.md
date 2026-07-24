@@ -2,6 +2,26 @@
 
 A skull-heterogeneity-based targeting error model for transcranial focused ultrasound (FUS), aimed at predicting simulation-derived targeting error and energy loss from simple, quickly-measurable skull characteristics — without running a full physics simulation per patient.
 
+## In Plain English
+
+Doctors can now treat certain brain conditions (essential tremor, some cases of depression and OCD) without opening the skull at all — by aiming ultrasound waves through the head from outside, so they converge on one tiny spot deep in the brain, kind of like focusing sunlight through a magnifying glass to a single burning point. This is called **focused ultrasound (FUS)**.
+
+The catch: **skull bone gets in the way and bends the beam.** Everyone's skull is a little different — thicker in some spots, thinner in others, denser here, more porous there. Sound waves passing through bone slow down unevenly and lose energy, so the "focus point" often doesn't land exactly where the doctor aimed it, and it arrives weaker than intended. Being off by even a few millimeters matters a lot when you're targeting a structure deep in the brain.
+
+Right now, the only way to know in advance how much a *specific* patient's skull will throw off the beam is to run a full, expensive, slow computer simulation of the sound waves traveling through that person's skull (built from a brain scan). That works, but it's too slow/expensive to do for every single patient just as a first-pass check.
+
+**What this project is trying to do:** build a much faster shortcut. Instead of running the whole expensive simulation, can we predict *how far off-target the beam will land* and *how much strength it will lose* just from a handful of simple, quick measurements of someone's skull (like its thickness and density at the entry point)? If yes, that becomes a fast screening tool — "this skull looks straightforward" vs. "this one needs the careful full simulation."
+
+**How we're getting the data to test that idea:** since we can't ethically run real ultrasound treatments on 150-300 people just to gather training data, we instead:
+1. Take real, publicly available brain MRI scans from a research dataset (IXI).
+2. Use an existing AI tool to turn each MRI into a "pseudo-CT" — basically a computer-generated estimate of what that person's skull bone looks like, since MRI doesn't naturally show bone well (CT scans do, but those use radiation and MRI doesn't).
+3. Run the real, expensive physics simulation (a well-established tool called k-Wave, used throughout this field) on each of those simulated skulls, aiming at the same target every time — that gives us "ground truth" answers for how much each person's skull would throw off the beam.
+4. Measure simple properties of each skull (density, thickness, curvature, etc.).
+5. Train a simple, explainable statistical model to predict the ground-truth answers from just those simple skull measurements.
+6. Check how well that shortcut actually works.
+
+Every step above produces its own explanatory picture (see `results/figures/`) — the goal is that anyone, technical or not, can look at the figures folder and see exactly what happened at each stage without reading code.
+
 ## Executive Summary
 
 **Problem.** Transcranial focused ultrasound (FUS) aims ultrasound waves through the skull to a precise point in the brain, for use in treating conditions like depression, essential tremor, and OCD. Skull bone varies in thickness, density, and structure across the head and between people, which bends and weakens the beam unpredictably — so it often lands off-target ("targeting error") with reduced energy. Today, catching this requires a full physics-based acoustic simulation per patient, built from a CT/MRI scan — accurate, but too slow and expensive to run on everyone.
@@ -33,13 +53,14 @@ data/
   interim/           Pseudo-CT / intermediate conversions (gitignored)
   processed/         Extracted skull features + simulation labels (gitignored)
 src/fus_targeting/
-  preprocessing/      MRI -> pseudo-CT conversion (mr-to-pct wrapper)
+  preprocessing/      MRI -> pseudo-CT conversion, reorient/resample, pseudo-CT -> acoustic maps
   simulation/          k-Wave simulation setup and batch runners
-  features/            Skull descriptor extraction (SDR, thickness, curvature, etc.)
-  modeling/            Predictive model training and evaluation
+  features/            Skull descriptor extraction (SDR, thickness, curvature, etc.) [not yet built]
+  modeling/            Predictive model training and evaluation [not yet built]
+  viz/                 Shared plotting style used by every figure in the project
 notebooks/           Exploratory analysis
 results/
-  figures/             Generated plots (gitignored)
+  figures/             Generated plots (tracked in git -- see Visualization standard below)
   tables/              Generated result tables (gitignored)
 paper/               Writeup drafts
 scripts/             CLI entry points / pipeline runners
@@ -71,6 +92,28 @@ pip install -r third_party/requirements-mrtopct.txt
 
 The official IXI download source (`biomedic.doc.ic.ac.uk/brain-development/downloads/IXI/`) is currently returning `403 Forbidden` for that specific subfolder (confirmed broken from multiple independent networks, not just an IP block) — the dataset itself is still fully open (CC BY-SA 3.0, no registration required), just temporarily unreachable at the canonical host. `scripts/fetch_ixi_dev_subjects.sh` fetches a small 5-subject dev batch from a Kaggle mirror ([kbacon/ixi-t1](https://www.kaggle.com/datasets/kbacon/ixi-t1)) instead, which hosts the same raw per-subject NIfTI files. Requires `pip install kaggle` and Kaggle API auth (`~/.kaggle/access_token` or `kaggle auth login`). Retry the official source once it's back up before scaling to the full 150-300 subject cohort.
 
+## Visualization standard
+
+Every pipeline stage saves a paper-quality figure as a side effect of running it — not an optional extra step. This is deliberate: the figures are both a correctness check (see the resampling bug below, caught because a figure looked wrong) and a growing archive of visual material for articles/videos later, independent of what ends up in the eventual paper. All figures use one consistent style (`src/fus_targeting/viz/style.py`, palette validated for colorblind-safety) and are tracked in git under `results/figures/<stage>/`, browsable directly on GitHub.
+
+## One-subject pipeline progress
+
+Building the pipeline one phase at a time on a single real subject (IXI002) before scaling to the full cohort. Each phase's figure is linked below.
+
+| Phase | What it does | Script | Figure |
+|---|---|---|---|
+| A | Reorient raw IXI scan to RAS+ and resample to 1mm isotropic (mr-to-pct's required input format) | `scripts/prepare_ixi_subject.py` | [phase A](results/figures/pipeline_one_subject/IXI002_phase_a_reorient_resample.png) |
+| B | Convert the prepped MRI to a pseudo-CT skull model via `mr-to-pct` | `scripts/convert_ixi_subject_to_pct.py` | [phase B](results/figures/pipeline_one_subject/IXI002_phase_b_mr_to_pct.png) |
+| C | Convert pseudo-CT Hounsfield values into k-Wave acoustic properties (density, sound speed, attenuation) using the same lab's published formulas | `scripts/compute_acoustic_maps.py` | [phase C](results/figures/pipeline_one_subject/IXI002_phase_c_acoustic_maps.png) |
+| D | Run a 3D k-Wave simulation of the baseline condition (VIM thalamus target, single-element 650kHz bowl transducer) through the subject's skull | `scripts/run_skull_simulation.py` | [phase D](results/figures/pipeline_one_subject/IXI002_phase_d_skull_simulation.png) |
+| E | Compute targeting error (focus offset) and energy loss labels vs. a free-field reference | *not yet built* | — |
+| F | Extract skull descriptors (density, thickness, curvature, entry angle, SDR) at the beam entry point | *not yet built* | — |
+| G | Tie A-F into one `run_one_subject.py` pipeline producing one labeled record | *not yet built* | — |
+
+**Baseline condition** (locked in `configs/simulation_matrix.yaml`): VIM thalamus target (most common clinical tcMRgFUS target, e.g. Insightec Exablate Neuro), single-element focused bowl transducer at 650kHz (ROC 63.2mm, 64mm aperture, matching Sonic Concepts CTX-500 bowl geometry driven as one uniform-phase element). The IXI002 target voxel was picked by visual inspection of that subject's anatomy — fine for proving the pipeline works end-to-end on one subject, but real atlas-based auto-targeting is required before scaling to the full 150-300 subject cohort (flagged directly in the config).
+
+**A real bug caught by the visualization requirement:** Phase A originally resampled using cubic-spline interpolation, which over-smoothed the thin (~1-2mm) cortical bone rim and collapsed IXI002's pseudo-CT peak bone value from the expected ~2500 Hounsfield-like units down to ~795 — silently understating skull density/sound-speed/attenuation everywhere downstream. Caught by comparing figures against the tool's own bundled example output, fixed by switching to linear (order=1) resampling. See the Phase A/B commit history for the full comparison.
+
 ## Status
 
-Environment verified for both k-Wave (CPU) and mr-to-pct — a single example subject runs end-to-end through mr-to-pct producing a plausible pseudo-CT. 5 raw IXI T1 scans downloaded for pipeline dev (`data/raw/ixi_t1_dev/`, gitignored). Full pipeline (Phases 1-2 of the plan) not yet implemented.
+Phases A-D of the one-subject pipeline are done and verified on real subject IXI002 (see table above): raw MRI → pseudo-CT → acoustic maps → through-skull k-Wave simulation, with the achieved focus landing within ~2-3mm of the intended target. Environment set up and verified for both k-Wave (CPU, Apple M4) and mr-to-pct (MPS). 5 raw IXI T1 scans downloaded for pipeline dev (`data/raw/ixi_t1_dev/`, gitignored). Remaining before the full cohort run: Phases E-G (targeting error/energy loss labels, skull descriptors, and tying it all into one script), then scaling per the baseline + generalization-subset design in the project plan.
