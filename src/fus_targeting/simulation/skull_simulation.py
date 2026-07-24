@@ -8,8 +8,10 @@ kWaveArray, and run kspaceFirstOrder3D.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
+import yaml
 from kwave.data import Vector
 from kwave.kgrid import kWaveGrid
 from kwave.kmedium import kWaveMedium
@@ -20,6 +22,15 @@ from kwave.options.simulation_execution_options import SimulationExecutionOption
 from kwave.options.simulation_options import SimulationOptions
 from kwave.utils.kwave_array import kWaveArray
 from kwave.utils.signals import tone_burst
+
+
+# Per-subject baseline target voxel (R,A,S index in that subject's RAS+ 1mm
+# acoustic-map grid), picked by visual inspection of anatomy. Fine for the
+# one-subject pipeline proof of concept; atlas-based auto-targeting is
+# required before scaling to the full cohort (see configs/simulation_matrix.yaml).
+KNOWN_TARGET_VOXELS = {
+    "IXI002": np.array([103, 117, 140]),  # approximate right VIM thalamus
+}
 
 
 @dataclass
@@ -54,6 +65,76 @@ def crop_around(maps: dict, target_voxel: np.ndarray, transducer_voxel: np.ndarr
         transducer_voxel=np.asarray(transducer_voxel) - lo,
         crop_origin=lo,
     )
+
+
+def make_free_field_domain(domain: CroppedDomain, water_density: float = 1000.0, water_sound_speed: float = 1500.0) -> CroppedDomain:
+    """Same geometry (shape, target/transducer voxels) as `domain`, but
+    homogeneous water everywhere -- i.e. what the beam would do with no
+    skull in the way. Used as the reference for targeting error / energy
+    loss (Phase E)."""
+    shape = domain.density.shape
+    return CroppedDomain(
+        density=np.full(shape, water_density, dtype=np.float32),
+        sound_speed=np.full(shape, water_sound_speed, dtype=np.float32),
+        alpha_coeff=np.zeros(shape, dtype=np.float32),
+        alpha_power=domain.alpha_power,
+        skull_mask=np.zeros(shape, dtype=bool),
+        target_voxel=domain.target_voxel,
+        transducer_voxel=domain.transducer_voxel,
+        crop_origin=domain.crop_origin,
+    )
+
+
+def find_lateral_transducer_position(skull_mask: np.ndarray, target_voxel: np.ndarray, roc_mm: float, standoff_mm: float = 3.0) -> np.ndarray:
+    """Cast a ray laterally (+R direction) from the target through the skull to
+    find the temporal window, then place the transducer ROC millimeters from
+    the target along that ray (so the bowl's natural geometric focus lands at
+    the target), nudged outward past the skull surface if ROC alone would land
+    inside tissue."""
+    r0, a0, s0 = target_voxel
+    max_r = skull_mask.shape[0]
+
+    outer_skull_r = None
+    for r in range(r0, max_r):
+        if skull_mask[r, a0, s0]:
+            outer_skull_r = r
+    if outer_skull_r is None:
+        raise RuntimeError("No skull crossing found along +R ray from target -- pick a different target/direction.")
+
+    roc_based_r = r0 + roc_mm
+    min_allowed_r = outer_skull_r + standoff_mm
+    transducer_r = max(roc_based_r, min_allowed_r)
+
+    return np.array([transducer_r, a0, s0])
+
+
+def prepare_subject_domain(subject_id: str, interim_dir: Path, config_path: Path, half_size: int = 100):
+    """Load a subject's acoustic maps + baseline config, find the transducer
+    position, and return the cropped simulation domain plus the transducer
+    spec (roc_mm, diameter_mm, freq_hz). Shared by Phase D (through-skull)
+    and Phase E (free-field reference) so both use identical geometry."""
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+    tx_cfg = config["baseline"]["transducer"]
+    freq_hz = config["baseline"]["frequency_hz"]
+    roc_mm = tx_cfg["radius_of_curvature_mm"]
+    diameter_mm = tx_cfg["aperture_diameter_mm"]
+
+    if subject_id not in KNOWN_TARGET_VOXELS:
+        raise KeyError(f"No known target voxel for {subject_id} -- add it to KNOWN_TARGET_VOXELS")
+    target_voxel = KNOWN_TARGET_VOXELS[subject_id]
+
+    npz_path = interim_dir / subject_id / "acoustic_maps.npz"
+    if not npz_path.exists():
+        raise SystemExit(f"{npz_path} not found -- run scripts/compute_acoustic_maps.py {subject_id} first")
+    data = np.load(npz_path)
+    maps = {k: data[k] for k in ["density", "sound_speed", "alpha_coeff", "skull_mask"]}
+    maps["alpha_power"] = float(data["alpha_power"])
+
+    transducer_voxel = find_lateral_transducer_position(maps["skull_mask"], target_voxel, roc_mm)
+    domain = crop_around(maps, target_voxel, transducer_voxel, half_size=half_size)
+
+    return domain, dict(roc_mm=roc_mm, diameter_mm=diameter_mm, freq_hz=freq_hz)
 
 
 def voxel_to_kgrid_coords(voxel_idx: np.ndarray, shape: tuple, dx: float) -> np.ndarray:
