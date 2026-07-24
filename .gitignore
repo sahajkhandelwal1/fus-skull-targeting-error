@@ -37,3 +37,10 @@ FUS_Project_Full_Plan_and_Executive_Summary.md
 
 # Python virtual environment
 .venv/
+
+# mr-to-pct: pretrained weights and example dataset (large binaries, fetched from OSF)
+third_party/mr-to-pct/pretrained_net_final_20220825.pth
+third_party/mr-to-pct/example_data.nii
+third_party/mr-to-pct/example_data_prep.nii
+third_party/mr-to-pct/example_pct_output.nii
+.venv-mrtopct/

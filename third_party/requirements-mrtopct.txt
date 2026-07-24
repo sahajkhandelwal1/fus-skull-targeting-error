@@ -1,0 +1,12 @@
+# Dependencies for third_party/mr-to-pct (MR -> pseudo-CT conversion).
+# Requires Python 3.10 (MONAI 1.1 / ANTsPy 0.4.2 predate Python 3.13 support).
+# Create with:
+#   arch -arm64 /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv .venv-mrtopct
+#   source .venv-mrtopct/bin/activate
+#   pip install -r third_party/requirements-mrtopct.txt
+torch
+monai==1.1.0
+antspyx==0.4.2
+numpy<2
+matplotlib
+nibabel
