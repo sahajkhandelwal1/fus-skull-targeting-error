@@ -34,3 +34,6 @@ FUS_Project_Full_Plan_and_Executive_Summary.md
 # Editors
 .vscode/
 .idea/
+
+# Python virtual environment
+.venv/
