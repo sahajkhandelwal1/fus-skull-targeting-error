@@ -3,9 +3,19 @@
 
 baseline:
   # Run for every subject in the cohort.
-  target: null            # TODO: fix treatment target coordinates
-  frequency_hz: null      # TODO: fix ultrasound frequency
-  transducer: null        # TODO: fix transducer geometry/spec
+  target: VIM_thalamus     # ventral intermediate nucleus (essential tremor) -- most
+                            # common tcMRgFUS target in clinical practice (Exablate Neuro).
+                            # NOTE: per-subject target coordinates are currently picked by
+                            # visual inspection (see scripts/run_skull_simulation.py), not
+                            # atlas registration -- fine for the one-subject pipeline proof
+                            # of concept, but atlas-based auto-targeting is required before
+                            # scaling to the full 150-300 subject cohort (Phase 2).
+  frequency_hz: 650000     # matches Insightec Exablate Neuro's clinical frequency
+  transducer:
+    type: single_element_focused_bowl
+    radius_of_curvature_mm: 63.2   # matches Sonic Concepts CTX-500 bowl geometry (single
+    aperture_diameter_mm: 64.0     # continuous element, uniform phase -- not the CTX-500's
+                                    # actual 4-ring annular array)
 
 generalization:
   # Run only on a subset of subjects, one axis varied at a time.
