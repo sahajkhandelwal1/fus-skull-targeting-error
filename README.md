@@ -55,8 +55,8 @@ data/
 src/fus_targeting/
   preprocessing/      MRI -> pseudo-CT conversion, reorient/resample, pseudo-CT -> acoustic maps
   simulation/          k-Wave simulation setup and batch runners
-  features/            Skull descriptor extraction (SDR, thickness, curvature, etc.) [not yet built]
-  modeling/            Predictive model training and evaluation [not yet built]
+  features/            Skull descriptor extraction (SDR, thickness, curvature, etc.)
+  modeling/            Predictive model training and evaluation [not yet built -- needs the full cohort]
   viz/                 Shared plotting style used by every figure in the project
 notebooks/           Exploratory analysis
 results/
@@ -106,9 +106,21 @@ Building the pipeline one phase at a time on a single real subject (IXI002) befo
 | B | Convert the prepped MRI to a pseudo-CT skull model via `mr-to-pct` | `scripts/convert_ixi_subject_to_pct.py` | [phase B](results/figures/pipeline_one_subject/IXI002_phase_b_mr_to_pct.png) |
 | C | Convert pseudo-CT Hounsfield values into k-Wave acoustic properties (density, sound speed, attenuation) using the same lab's published formulas | `scripts/compute_acoustic_maps.py` | [phase C](results/figures/pipeline_one_subject/IXI002_phase_c_acoustic_maps.png) |
 | D | Run a 3D k-Wave simulation of the baseline condition (VIM thalamus target, single-element 650kHz bowl transducer) through the subject's skull | `scripts/run_skull_simulation.py` | [phase D](results/figures/pipeline_one_subject/IXI002_phase_d_skull_simulation.png) |
-| E | Compute targeting error (focus offset) and energy loss labels vs. a free-field reference | *not yet built* | — |
-| F | Extract skull descriptors (density, thickness, curvature, entry angle, SDR) at the beam entry point | *not yet built* | — |
-| G | Tie A-F into one `run_one_subject.py` pipeline producing one labeled record | *not yet built* | — |
+| E | Compute targeting error (focus offset) and energy loss labels vs. a free-field reference | `scripts/compute_targeting_error.py` | [phase E](results/figures/pipeline_one_subject/IXI002_phase_e_targeting_error.png) |
+| F | Extract skull descriptors (density, thickness, curvature, entry angle, SDR) at the beam entry point | `scripts/extract_skull_descriptors.py` | [phase F](results/figures/pipeline_one_subject/IXI002_phase_f_skull_descriptors.png) |
+| G | Tie A-F into one pipeline, producing one labeled record + a summary figure | `scripts/run_one_subject.sh` | [phase G summary](results/figures/pipeline_one_subject/IXI002_phase_g_summary.png) |
+
+**IXI002's completed record** (`data/processed/IXI002_record.json`) — the shape of one training-data row for the eventual model:
+
+| Inputs (fast, from pseudo-CT) | Outputs (expensive, from full simulation) |
+|---|---|
+| thickness: 6.0mm | targeting error: 2.45mm |
+| density (mean/max): 1141/1617 HU | energy loss: 65.5% |
+| SDR: 0.36 | insertion loss: 9.25dB |
+| entry angle: 4.4° | |
+| radius of curvature: 156mm | |
+
+Cross-checked against a free-field (no-skull) reference simulation: the achieved focus there landed exactly on the intended target (0.0mm offset), confirming the through-skull offset is a real skull effect and not a geometry bug.
 
 **Baseline condition** (locked in `configs/simulation_matrix.yaml`): VIM thalamus target (most common clinical tcMRgFUS target, e.g. Insightec Exablate Neuro), single-element focused bowl transducer at 650kHz (ROC 63.2mm, 64mm aperture, matching Sonic Concepts CTX-500 bowl geometry driven as one uniform-phase element). The IXI002 target voxel was picked by visual inspection of that subject's anatomy — fine for proving the pipeline works end-to-end on one subject, but real atlas-based auto-targeting is required before scaling to the full 150-300 subject cohort (flagged directly in the config).
 
@@ -116,4 +128,8 @@ Building the pipeline one phase at a time on a single real subject (IXI002) befo
 
 ## Status
 
-Phases A-D of the one-subject pipeline are done and verified on real subject IXI002 (see table above): raw MRI → pseudo-CT → acoustic maps → through-skull k-Wave simulation, with the achieved focus landing within ~2-3mm of the intended target. Environment set up and verified for both k-Wave (CPU, Apple M4) and mr-to-pct (MPS). 5 raw IXI T1 scans downloaded for pipeline dev (`data/raw/ixi_t1_dev/`, gitignored). Remaining before the full cohort run: Phases E-G (targeting error/energy loss labels, skull descriptors, and tying it all into one script), then scaling per the baseline + generalization-subset design in the project plan.
+**The one-subject pipeline (Phases A-G) is complete and verified end to end on real subject IXI002** — raw MRI → pseudo-CT → acoustic maps → through-skull k-Wave simulation → targeting error/energy loss labels → skull descriptors → one final labeled record, runnable as a single command (`scripts/run_one_subject.sh IXI002`). See the [pipeline summary figure](results/figures/pipeline_one_subject/IXI002_phase_g_summary.png) for the whole story in one image.
+
+Environment set up and verified for both k-Wave (CPU, Apple M4) and mr-to-pct (MPS). 5 raw IXI T1 scans downloaded for pipeline dev (`data/raw/ixi_t1_dev/`, gitignored).
+
+**Next up:** this proved the mechanics work, not that the targeting is clinically precise -- before scaling to the full 150-300 subject cohort, the target voxel needs to move from "picked by eyeballing one subject's anatomy" to real atlas-based auto-targeting (flagged in `configs/simulation_matrix.yaml`). Then: batch-download the full cohort (retry the official IXI source, which was down as of this writing), run the baseline + generalization-subset simulation matrix, build the feature-extraction pipeline at scale, and train the predictive model.
