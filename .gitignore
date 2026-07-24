@@ -16,8 +16,9 @@ data/processed/*
 !data/processed/.gitkeep
 
 # Simulation outputs / results artifacts
-results/figures/*
-!results/figures/.gitkeep
+# NOTE: results/figures/ is intentionally tracked (not ignored) -- every
+# pipeline stage produces paper-quality figures that are a deliverable in
+# their own right (articles/videos), not just regenerable scratch output.
 results/tables/*
 !results/tables/.gitkeep
 *.h5
