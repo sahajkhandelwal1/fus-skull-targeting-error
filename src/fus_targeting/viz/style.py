@@ -100,6 +100,15 @@ def apply_style() -> None:
     })
 
 
+def legend_on_image(ax, **kwargs):
+    """Legend readable when placed over an imshow (e.g. a dark anatomical
+    slice) -- the project-wide frameon=False default is invisible there
+    since it relies on the light chart surface showing through."""
+    defaults = dict(loc="upper right", fontsize=8, frameon=True, facecolor=CHROME["surface"], edgecolor="none", framealpha=0.85)
+    defaults.update(kwargs)
+    return ax.legend(**defaults)
+
+
 def save_figure(fig, relative_path: str, project_root: Path | None = None, formats=("png",)) -> list[Path]:
     """Save a figure into the tracked results/figures/ tree.
 

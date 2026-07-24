@@ -19,7 +19,7 @@ from fus_targeting.simulation.skull_simulation import (  # noqa: E402
     prepare_subject_domain,
     run_through_skull_simulation,
 )
-from fus_targeting.viz.style import CATEGORICAL, CHROME, save_figure, sequential_cmap  # noqa: E402
+from fus_targeting.viz.style import CATEGORICAL, CHROME, legend_on_image, save_figure, sequential_cmap  # noqa: E402
 
 INTERIM_DIR = ROOT / "data" / "interim"
 CONFIG_PATH = ROOT / "configs" / "simulation_matrix.yaml"
@@ -95,7 +95,7 @@ def main() -> None:
         ax.scatter(*display_xy(intended_target, p_max.shape), c=CHROME["good"], marker="+", s=200, label="Intended target")
         ax.scatter(*display_xy(achieved, p_max.shape), c="#e34948", marker="x", s=120, label="Achieved focus")
         ax.set_title(title, fontsize=11)
-        ax.legend(loc="upper right", fontsize=8)
+        legend_on_image(ax)
         ax.axis("off")
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04).set_label("Pressure (Pa)", color=CHROME["ink_secondary"])
 

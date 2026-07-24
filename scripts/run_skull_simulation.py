@@ -20,7 +20,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from fus_targeting.simulation.skull_simulation import prepare_subject_domain, run_through_skull_simulation  # noqa: E402
-from fus_targeting.viz.style import CHROME, save_figure, sequential_cmap  # noqa: E402
+from fus_targeting.viz.style import CHROME, legend_on_image, save_figure, sequential_cmap  # noqa: E402
 
 INTERIM_DIR = ROOT / "data" / "interim"
 CONFIG_PATH = ROOT / "configs" / "simulation_matrix.yaml"
@@ -69,14 +69,14 @@ def main() -> None:
     axes[0].scatter(*display_xy(domain.target_voxel, domain.skull_mask.shape), c=CHROME["good"], marker="+", s=200, label="Intended target")
     axes[0].scatter(*display_xy(domain.transducer_voxel, domain.skull_mask.shape), c="#e34948", marker="o", s=60, label="Transducer")
     axes[0].set_title("Skull mask + geometry", fontsize=11)
-    axes[0].legend(loc="upper right", fontsize=8)
+    legend_on_image(axes[0])
     axes[0].axis("off")
 
     im = axes[1].imshow(np.rot90(p_max[:, :, mid]), cmap=sequential_cmap)
     axes[1].scatter(*display_xy(domain.target_voxel, p_max.shape), c=CHROME["good"], marker="+", s=200)
     axes[1].scatter(*display_xy(np.array(achieved_focus_idx), p_max.shape), c="#e34948", marker="x", s=120, label="Achieved focus")
     axes[1].set_title("Max pressure field", fontsize=11)
-    axes[1].legend(loc="upper right", fontsize=8)
+    legend_on_image(axes[1])
     axes[1].axis("off")
     cbar = fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
     cbar.set_label("Pressure (Pa)", color=CHROME["ink_secondary"])
