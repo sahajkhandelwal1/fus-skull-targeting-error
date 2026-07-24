@@ -67,6 +67,10 @@ pip install -r third_party/requirements-mrtopct.txt
 ```
 `third_party/mr-to-pct` is a git submodule ([sitiny/mr-to-pct](https://github.com/sitiny/mr-to-pct)) — run `git submodule update --init` if it's empty after cloning. Pretrained weights and the example dataset are downloaded separately from OSF (not committed, see the tool's own README) into `third_party/mr-to-pct/`.
 
+## Data
+
+The official IXI download source (`biomedic.doc.ic.ac.uk/brain-development/downloads/IXI/`) is currently returning `403 Forbidden` for that specific subfolder (confirmed broken from multiple independent networks, not just an IP block) — the dataset itself is still fully open (CC BY-SA 3.0, no registration required), just temporarily unreachable at the canonical host. `scripts/fetch_ixi_dev_subjects.sh` fetches a small 5-subject dev batch from a Kaggle mirror ([kbacon/ixi-t1](https://www.kaggle.com/datasets/kbacon/ixi-t1)) instead, which hosts the same raw per-subject NIfTI files. Requires `pip install kaggle` and Kaggle API auth (`~/.kaggle/access_token` or `kaggle auth login`). Retry the official source once it's back up before scaling to the full 150-300 subject cohort.
+
 ## Status
 
-Environment verified for both k-Wave (CPU) and mr-to-pct — a single example subject runs end-to-end through mr-to-pct producing a plausible pseudo-CT. Full pipeline (Phases 1-2 of the plan) not yet implemented.
+Environment verified for both k-Wave (CPU) and mr-to-pct — a single example subject runs end-to-end through mr-to-pct producing a plausible pseudo-CT. 5 raw IXI T1 scans downloaded for pipeline dev (`data/raw/ixi_t1_dev/`, gitignored). Full pipeline (Phases 1-2 of the plan) not yet implemented.
