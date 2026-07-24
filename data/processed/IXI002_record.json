@@ -1,0 +1,12 @@
+{
+  "subject_id": "IXI002",
+  "skull_thickness_mm": 6.019047619047617,
+  "skull_density_hu_mean": 1141.0455729166667,
+  "skull_density_hu_max": 1617.17919921875,
+  "skull_density_ratio_sdr": 0.35517812167948193,
+  "beam_entry_angle_deg": 4.391250124101232,
+  "skull_radius_of_curvature_mm": 156.14463723246647,
+  "targeting_error_mm": 2.449489742783178,
+  "energy_loss_fraction": 0.6551845393804678,
+  "insertion_loss_db": 9.24826539573896
+}

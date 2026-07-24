@@ -12,8 +12,9 @@ data/raw/*
 !data/raw/.gitkeep
 data/interim/*
 !data/interim/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
+# data/processed/ is intentionally NOT ignored -- assembled per-subject
+# records (thickness/density/SDR/... -> targeting error/energy loss) are
+# small and are the actual training-data rows for the eventual model.
 
 # Simulation outputs / results artifacts
 # NOTE: results/figures/ is intentionally tracked (not ignored) -- every
