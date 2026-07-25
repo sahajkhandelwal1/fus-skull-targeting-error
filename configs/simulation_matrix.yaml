@@ -5,11 +5,16 @@ baseline:
   # Run for every subject in the cohort.
   target: VIM_thalamus     # ventral intermediate nucleus (essential tremor) -- most
                             # common tcMRgFUS target in clinical practice (Exablate Neuro).
-                            # NOTE: per-subject target coordinates are currently picked by
-                            # visual inspection (see scripts/run_skull_simulation.py), not
-                            # atlas registration -- fine for the one-subject pipeline proof
-                            # of concept, but atlas-based auto-targeting is required before
-                            # scaling to the full 150-300 subject cohort (Phase 2).
+                            # Per-subject coordinates are now found automatically via
+                            # affine registration to the MNI152 template (see
+                            # scripts/find_atlas_target.py and
+                            # fus_targeting.preprocessing.atlas_targeting), using the
+                            # standard indirect AC-PC-relative VIM formula (X=14mm lateral,
+                            # Y=1/3 AC-PC length - 2mm anterior to PC, Z=0). This is the
+                            # standard clinical "indirect targeting" approach (reported
+                            # accuracy ~2mm, up to 5mm, vs. true VIM) -- adequate for this
+                            # project's cohort-scale screening use case, not a substitute
+                            # for clinical direct/tractography targeting.
   frequency_hz: 650000     # matches Insightec Exablate Neuro's clinical frequency
   transducer:
     type: single_element_focused_bowl

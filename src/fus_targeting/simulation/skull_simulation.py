@@ -24,13 +24,27 @@ from kwave.utils.kwave_array import kWaveArray
 from kwave.utils.signals import tone_burst
 
 
-# Per-subject baseline target voxel (R,A,S index in that subject's RAS+ 1mm
-# acoustic-map grid), picked by visual inspection of anatomy. Fine for the
-# one-subject pipeline proof of concept; atlas-based auto-targeting is
-# required before scaling to the full cohort (see configs/simulation_matrix.yaml).
+# Fallback per-subject target voxel (R,A,S index in that subject's RAS+ 1mm
+# acoustic-map grid), picked by visual inspection of anatomy -- only used if
+# scripts/find_atlas_target.py hasn't been run for that subject yet. The
+# atlas-registered target (data/interim/<subject>/atlas_target_voxel.npy,
+# see fus_targeting.preprocessing.atlas_targeting) is preferred and is what
+# scales to the full cohort; this dict is legacy from the initial
+# proof-of-concept before atlas-based targeting existed.
 KNOWN_TARGET_VOXELS = {
-    "IXI002": np.array([103, 117, 140]),  # approximate right VIM thalamus
+    "IXI002": np.array([103, 117, 140]),  # approximate right VIM thalamus (eyeballed)
 }
+
+
+def get_target_voxel(subject_id: str, interim_dir: Path) -> np.ndarray:
+    atlas_path = interim_dir / subject_id / "atlas_target_voxel.npy"
+    if atlas_path.exists():
+        return np.round(np.load(atlas_path)).astype(int)
+    if subject_id in KNOWN_TARGET_VOXELS:
+        return KNOWN_TARGET_VOXELS[subject_id]
+    raise KeyError(
+        f"No target voxel for {subject_id} -- run scripts/find_atlas_target.py {subject_id} first"
+    )
 
 
 @dataclass
@@ -120,9 +134,7 @@ def prepare_subject_domain(subject_id: str, interim_dir: Path, config_path: Path
     roc_mm = tx_cfg["radius_of_curvature_mm"]
     diameter_mm = tx_cfg["aperture_diameter_mm"]
 
-    if subject_id not in KNOWN_TARGET_VOXELS:
-        raise KeyError(f"No known target voxel for {subject_id} -- add it to KNOWN_TARGET_VOXELS")
-    target_voxel = KNOWN_TARGET_VOXELS[subject_id]
+    target_voxel = get_target_voxel(subject_id, interim_dir)
 
     npz_path = interim_dir / subject_id / "acoustic_maps.npz"
     if not npz_path.exists():

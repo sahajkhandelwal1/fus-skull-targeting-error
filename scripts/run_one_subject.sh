@@ -22,6 +22,9 @@ deactivate
 echo "=== Phase B: MRI -> pseudo-CT ==="
 source .venv-mrtopct/bin/activate
 python3 scripts/convert_ixi_subject_to_pct.py "$SUBJECT_ID"
+
+echo "=== Atlas-based VIM target registration ==="
+python3 scripts/find_atlas_target.py "$SUBJECT_ID"
 deactivate
 
 source .venv/bin/activate

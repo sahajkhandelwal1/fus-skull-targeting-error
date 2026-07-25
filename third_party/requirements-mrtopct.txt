@@ -10,3 +10,5 @@ antspyx==0.4.2
 numpy<2
 matplotlib
 nibabel
+nilearn   # bundled MNI152 template, for atlas-based VIM targeting
+pandas    # required by ants.apply_transforms_to_points

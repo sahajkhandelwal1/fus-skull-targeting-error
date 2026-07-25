@@ -16,8 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from fus_targeting.features.skull_descriptors import compute_skull_descriptors  # noqa: E402
 from fus_targeting.simulation.skull_simulation import (  # noqa: E402
-    KNOWN_TARGET_VOXELS,
     find_lateral_transducer_position,
+    get_target_voxel,
 )
 from fus_targeting.viz.style import CHROME, legend_on_image, save_figure, sequential_cmap  # noqa: E402
 
@@ -41,7 +41,7 @@ def main() -> None:
     acoustic = np.load(INTERIM_DIR / subject_id / "acoustic_maps.npz")
     skull_mask = acoustic["skull_mask"]
 
-    target_voxel = KNOWN_TARGET_VOXELS[subject_id]
+    target_voxel = get_target_voxel(subject_id, INTERIM_DIR)
     roc_mm = config["baseline"]["transducer"]["radius_of_curvature_mm"]
     transducer_voxel = find_lateral_transducer_position(skull_mask, target_voxel, roc_mm)
 
