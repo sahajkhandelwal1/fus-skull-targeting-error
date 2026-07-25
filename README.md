@@ -114,15 +114,15 @@ Building the pipeline one phase at a time on a single real subject (IXI002) befo
 
 | Inputs (fast, from pseudo-CT) | Outputs (expensive, from full simulation) |
 |---|---|
-| thickness: 6.0mm | targeting error: 2.45mm |
-| density (mean/max): 1141/1617 HU | energy loss: 65.5% |
-| SDR: 0.36 | insertion loss: 9.25dB |
-| entry angle: 4.4° | |
-| radius of curvature: 156mm | |
+| thickness: 6.0mm | targeting error: 4.12mm |
+| density (mean/max): 1151/1655 HU | energy loss: 57.2% |
+| SDR: 0.33 | insertion loss: 7.37dB |
+| entry angle: 4.8° | |
+| radius of curvature: 89mm | |
 
 Cross-checked against a free-field (no-skull) reference simulation: the achieved focus there landed exactly on the intended target (0.0mm offset), confirming the through-skull offset is a real skull effect and not a geometry bug.
 
-**Baseline condition** (locked in `configs/simulation_matrix.yaml`): VIM thalamus target (most common clinical tcMRgFUS target, e.g. Insightec Exablate Neuro), single-element focused bowl transducer at 650kHz (ROC 63.2mm, 64mm aperture, matching Sonic Concepts CTX-500 bowl geometry driven as one uniform-phase element). The IXI002 target voxel was picked by visual inspection of that subject's anatomy — fine for proving the pipeline works end-to-end on one subject, but real atlas-based auto-targeting is required before scaling to the full 150-300 subject cohort (flagged directly in the config).
+**Baseline condition** (locked in `configs/simulation_matrix.yaml`): VIM thalamus target (most common clinical tcMRgFUS target, e.g. Insightec Exablate Neuro), single-element focused bowl transducer at 650kHz (ROC 63.2mm, 64mm aperture, matching Sonic Concepts CTX-500 bowl geometry driven as one uniform-phase element). The per-subject target voxel is now found automatically (`scripts/find_atlas_target.py`) by affine-registering the subject to the MNI152 template (via nilearn's bundled template, no download needed) and applying the standard clinical indirect VIM targeting formula — replacing the manually-eyeballed target used for the initial proof of concept. Validated against the original manual target: landed within ~5.5mm, consistent with the ~2-5mm accuracy indirect targeting is reported to have in the literature itself.
 
 **A real bug caught by the visualization requirement:** Phase A originally resampled using cubic-spline interpolation, which over-smoothed the thin (~1-2mm) cortical bone rim and collapsed IXI002's pseudo-CT peak bone value from the expected ~2500 Hounsfield-like units down to ~795 — silently understating skull density/sound-speed/attenuation everywhere downstream. Caught by comparing figures against the tool's own bundled example output, fixed by switching to linear (order=1) resampling. See the Phase A/B commit history for the full comparison.
 
@@ -132,4 +132,4 @@ Cross-checked against a free-field (no-skull) reference simulation: the achieved
 
 Environment set up and verified for both k-Wave (CPU, Apple M4) and mr-to-pct (MPS). 5 raw IXI T1 scans downloaded for pipeline dev (`data/raw/ixi_t1_dev/`, gitignored).
 
-**Next up:** this proved the mechanics work, not that the targeting is clinically precise -- before scaling to the full 150-300 subject cohort, the target voxel needs to move from "picked by eyeballing one subject's anatomy" to real atlas-based auto-targeting (flagged in `configs/simulation_matrix.yaml`). Then: batch-download the full cohort (retry the official IXI source, which was down as of this writing), run the baseline + generalization-subset simulation matrix, build the feature-extraction pipeline at scale, and train the predictive model.
+**Next up:** atlas-based auto-targeting is done (see above) -- the pipeline no longer needs a human to look at each subject's anatomy. Remaining before the full run: batch-download the full cohort (retry the official IXI source, which was down as of this writing), run the baseline + generalization-subset simulation matrix, build the feature-extraction pipeline at scale, and train the predictive model.
