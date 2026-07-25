@@ -47,7 +47,7 @@ def _find_outer_skull_surface_points(skull_mask: np.ndarray, center_voxel: np.nd
     return local_idx + lo
 
 
-def _estimate_curvature(skull_mask: np.ndarray, entry_point: np.ndarray, direction: np.ndarray, patch_radius_mm: float = 15.0) -> float:
+def _estimate_curvature(skull_mask: np.ndarray, entry_point: np.ndarray, direction: np.ndarray, patch_radius_mm: float = 20.0) -> float:
     """Fit a quadratic surface to local outer-skull points near the entry
     point (in a frame aligned with the beam direction) and estimate the mean
     radius of curvature from the fit's second-order coefficients."""
@@ -84,9 +84,18 @@ def _estimate_curvature(skull_mask: np.ndarray, entry_point: np.ndarray, directi
     a, b = coeffs[0], coeffs[1]
 
     mean_curvature = (a + b)  # for a near-flat patch, w ~ a*u^2+b*v^2 -> curvature ~ 2a,2b; a+b is proportional to mean curvature
-    if abs(mean_curvature) < 1e-8:
-        return np.inf
-    return float(1.0 / (2 * abs(mean_curvature)))
+
+    # The outer-skull surface is a binary mask boundary (blocky/staircased
+    # at 1mm voxel resolution, not a smooth surface), so this quadratic fit
+    # is noisy: small differences in patch composition can swing the fit
+    # from "flat" to "very flat" to "numerically ~0", producing physically
+    # meaningless radii (seen: 7864mm at one entry point vs. 156mm a few mm
+    # away at the same anatomical region). Realistic adult skull ROC is
+    # roughly 30-300mm; cap there rather than report noise as signal.
+    max_realistic_roc_mm = 300.0
+    if abs(mean_curvature) < 1.0 / (2 * max_realistic_roc_mm):
+        return max_realistic_roc_mm
+    return float(min(1.0 / (2 * abs(mean_curvature)), max_realistic_roc_mm))
 
 
 def compute_skull_descriptors(
